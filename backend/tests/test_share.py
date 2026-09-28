@@ -29,6 +29,7 @@ class TestSendInviteEmail:
         with mock_aws():
             ses = boto3.client("ses", region_name=TEST_REGION)
             ses.verify_email_identity(EmailAddress=SENDER_EMAIL)
+            ses.verify_email_identity(EmailAddress=RECIPIENT_EMAIL)
 
             resp = send_invite_email(
                 to_email=RECIPIENT_EMAIL,

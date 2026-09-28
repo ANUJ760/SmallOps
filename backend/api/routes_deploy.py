@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel
 
 from backend.agent.planner import plan_and_execute
 from backend.agent.trace_logger import log_steps
+from backend.auth.roles import require_editor
 from backend.config import get_settings
 from backend.deploy.lambda_deployer import deploy_to_lambda
 from backend.models.app import App, StepType, TimelineStep
@@ -100,7 +101,7 @@ def _update_app_status(app_id: str, body: DeployRequest, status: str, function_u
     )
 
 
-@router.post("/{app_id}")
+@router.post("/{app_id}", dependencies=[Depends(require_editor)])
 async def deploy_app(app_id: str, body: DeployRequest, background_tasks: BackgroundTasks):
     """Start the deploy pipeline in the background and return immediately."""
     

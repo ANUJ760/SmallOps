@@ -82,8 +82,8 @@ def send_invite_email(
     return response
 
 
-@router.post("/apps/{app_id}/invite")
-@router.post("/share/{app_id}/invite")
+@router.post("/apps/{app_id}/invite", dependencies=[Depends(require_editor)])
+@router.post("/share/{app_id}/invite", dependencies=[Depends(require_editor)])
 async def invite_user(app_id: str, body: InviteRequest):
     """Invite a collaborator by email with a Viewer or Editor role."""
     settings = get_settings()

@@ -41,7 +41,7 @@ async def get_timeline_step(app_id: str, step_id: str):
     return step.model_dump()
 
 
-@router.post("/apps/{app_id}/revert/{step_id}")
+@router.post("/apps/{app_id}/revert/{step_id}", dependencies=[Depends(require_editor)])
 async def revert_to_step(app_id: str, step_id: str):
     """Revert the live app to the code snapshot at a given timeline step.
 

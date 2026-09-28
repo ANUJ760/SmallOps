@@ -29,10 +29,10 @@ class TestPackageCode:
         buf = io.BytesIO(zip_bytes)
         with zipfile.ZipFile(buf, "r") as zf:
             names = zf.namelist()
-            assert "app_code.py" in names
+            assert "index.html" in names
             assert "lambda_function.py" in names
             # Verify the app code content
-            assert zf.read("app_code.py").decode() == SAMPLE_CODE
+            assert zf.read("index.html").decode() == SAMPLE_CODE
 
     def test_handler_is_valid_python(self):
         zip_bytes = _package_code(SAMPLE_CODE)

@@ -6,11 +6,12 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Ensure mocks for boto3, jose, and structlog if missing in test environment
-mock_boto3 = MagicMock()
-mock_boto3.__path__ = []
-sys.modules["boto3"] = mock_boto3
-sys.modules["boto3.dynamodb"] = MagicMock()
-sys.modules["boto3.dynamodb.conditions"] = MagicMock()
+if "boto3" not in sys.modules:
+    mock_boto3 = MagicMock()
+    mock_boto3.__path__ = []
+    sys.modules["boto3"] = mock_boto3
+    sys.modules["boto3.dynamodb"] = MagicMock()
+    sys.modules["boto3.dynamodb.conditions"] = MagicMock()
 
 if "botocore" not in sys.modules:
     sys.modules["botocore"] = MagicMock()
