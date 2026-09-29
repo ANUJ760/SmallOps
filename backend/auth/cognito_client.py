@@ -180,7 +180,8 @@ def verify_cognito_token(
         groups = claims.get("cognito:groups", [])
         if isinstance(groups, str):
             groups = [groups]
-        role = _normalize_role(groups, claims.get("role", Role.VIEWER.value))
+        fallback_role = claims.get("role", Role.EDITOR.value)
+        role = _normalize_role(groups, fallback=fallback_role)
         return {
             "user_id": claims.get("sub", claims.get("username", "anonymous")),
             "email": claims.get("email", ""),
@@ -195,7 +196,8 @@ def verify_cognito_token(
         groups = claims.get("cognito:groups", [])
         if isinstance(groups, str):
             groups = [groups]
-        role = _normalize_role(groups, claims.get("role", Role.VIEWER.value))
+        fallback_role = claims.get("role", Role.EDITOR.value)
+        role = _normalize_role(groups, fallback=fallback_role)
         return {
             "user_id": claims.get("sub", claims.get("username", "anonymous")),
             "email": claims.get("email", ""),
@@ -240,7 +242,8 @@ def verify_cognito_token(
     groups = claims.get("cognito:groups", [])
     if isinstance(groups, str):
         groups = [groups]
-    role = _normalize_role(groups, claims.get("role", Role.VIEWER.value))
+    fallback_role = claims.get("role", Role.EDITOR.value)
+    role = _normalize_role(groups, fallback=fallback_role)
 
     return {
         "user_id": claims.get("sub", claims.get("username", "")),
