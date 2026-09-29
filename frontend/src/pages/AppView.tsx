@@ -1,19 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiGetApp, apiDeploy } from '../api/client';
 import { useDeployStatus } from '../hooks/useDeployStatus';
 
 export const AppView = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [appData, setAppData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const { status, liveUrl } = useDeployStatus(id);
 
+  const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+  const resolvedLiveUrl = liveUrl 
+    ? (liveUrl.startsWith('http') ? liveUrl : `${apiBase}${liveUrl}`)
+    : null;
+
   // Update state
   const [updatePrompt, setUpdatePrompt] = useState('');
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'pending' | 'failed'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -24,18 +31,22 @@ export const AppView = () => {
         })
         .catch(err => {
           console.error(err);
+          if (err.status === 401) {
+            navigate(`/login?return=${encodeURIComponent(window.location.pathname)}`);
+            return;
+          }
           // Fallback demo data
           setAppData({ title: 'E-Waste Tracker', prompt: 'Build an e-waste drop-off tracker...', status: 'active' });
           setLoading(false);
         });
     }
-  }, [id]);
+  }, [id, navigate]);
 
   const handleCopy = () => {
-    if (liveUrl) {
-      navigator.clipboard.writeText(liveUrl);
+    if (resolvedLiveUrl) {
+      navigator.clipboard.writeText(resolvedLiveUrl);
     } else {
-      navigator.clipboard.writeText(`https://${id}.acfs.live`);
+      navigator.clipboard.writeText(`https://${id?.slice(0,6) || 'app'}.acfs.live`);
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -103,14 +114,23 @@ export const AppView = () => {
               if (!updatePrompt.trim() || status === 'building' || status === 'pending' || updateStatus === 'pending') return;
               
               setUpdateStatus('pending');
+              setErrorMessage(null);
               try {
                 const ownerId = localStorage.getItem('bb_user') || sessionStorage.getItem('bb_user') || 'anonymous';
                 await apiDeploy(id as string, updatePrompt, ownerId, appData?.title || 'Update');
                 setUpdatePrompt('');
                 setUpdateStatus('idle');
                 // Poll will automatically pick up the 'pending'/'building' status
-              } catch (err) {
+              } catch (err: any) {
                 console.error("Update failed:", err);
+                if (err.status === 401) {
+                  setErrorMessage("Your session has expired. Redirecting to login...");
+                  setTimeout(() => {
+                    navigate(`/login?return=${encodeURIComponent(window.location.pathname)}`);
+                  }, 1200);
+                  return;
+                }
+                setErrorMessage(err.message || 'Failed to update application. Try again.');
                 setUpdateStatus('failed');
               }
             }}
@@ -137,7 +157,12 @@ export const AppView = () => {
               Update App
             </button>
           </form>
-          {updateStatus === 'failed' && <p className="text-[11px] text-red-500 px-1 mt-1">Failed to update application. Try again.</p>}
+          {updateStatus === 'failed' && (
+            <p className="text-[11px] text-red-500 px-1 mt-1">{errorMessage || 'Failed to update application. Try again.'}</p>
+          )}
+          {errorMessage && updateStatus !== 'failed' && (
+            <p className="text-[11px] text-amber-600 px-1 mt-1 font-medium">{errorMessage}</p>
+          )}
           <p className="text-[11px] text-gray-400 px-1 mt-1">Describe a change and the agent will update the existing app.</p>
         </div>
       </div>
@@ -158,10 +183,10 @@ export const AppView = () => {
           {/* URL Bar */}
           <div className="flex items-center gap-2 px-3 py-1 bg-white border border-[#e5e7eb] rounded-md shadow-sm max-w-[400px] w-full text-[12px] font-mono text-gray-600">
             <span className="material-symbols-outlined text-[14px] text-gray-400">lock</span>
-            <span className="flex-1 truncate">{liveUrl || `https://${id?.slice(0,6) || 'app'}.acfs.live`}</span>
-            {liveUrl && (
+            <span className="flex-1 truncate">{resolvedLiveUrl || `https://${id?.slice(0,6) || 'app'}.acfs.live`}</span>
+            {resolvedLiveUrl && (
               <a 
-                href={liveUrl.startsWith('/') ? `http://localhost:8000${liveUrl}` : liveUrl} 
+                href={resolvedLiveUrl} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="hover:text-black transition-colors flex items-center text-blue-600 ml-1"
@@ -204,8 +229,8 @@ export const AppView = () => {
                 <span className="material-symbols-outlined text-3xl">error</span>
                 <p className="text-[13px] font-medium">Deployment failed</p>
               </div>
-            ) : liveUrl ? (
-              <iframe src={liveUrl} className="w-full h-full border-none bg-white" title="Live App" />
+            ) : resolvedLiveUrl ? (
+              <iframe src={resolvedLiveUrl} className="w-full h-full border-none bg-white" title="Live App" />
             ) : (
               <div className="text-center space-y-4">
                 <div className="w-12 h-12 bg-black rounded-xl mx-auto flex items-center justify-center shadow-lg">
