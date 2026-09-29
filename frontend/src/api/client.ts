@@ -1,15 +1,11 @@
+import { getValidToken } from './auth';
+
 // ── Central API client ──────────────────────────────────────────────────────
 // All backend calls go through here so auth headers are always injected.
 // The Vite proxy forwards /apps /deploy /share /health to http://127.0.0.1:8000
 // In production, we use VITE_API_BASE_URL
-const BASE = import.meta.env.VITE_API_BASE_URL || '';
+const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 const API_URL = BASE;
-
-function getToken(): string | null {
-  return localStorage.getItem('bb_token') || sessionStorage.getItem('bb_token');
-}
-
-
 
 async function request<T>(
   method: string,
@@ -17,7 +13,7 @@ async function request<T>(
   body?: unknown,
   extraHeaders?: Record<string, string>,
 ): Promise<T> {
-  const token = getToken();
+  const token = await getValidToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -29,6 +25,11 @@ async function request<T>(
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem('bb_token');
+    sessionStorage.removeItem('bb_token');
+  }
 
   if (!res.ok) {
     let msg = `API error ${res.status}`;

@@ -101,3 +101,59 @@ export function resendConfirmationCode(email: string): Promise<any> {
   });
 }
 
+export function getValidToken(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!poolData.UserPoolId || !poolData.ClientId) {
+      const fallbackToken = localStorage.getItem('bb_token') || sessionStorage.getItem('bb_token');
+      return resolve(fallbackToken);
+    }
+
+    const cognitoUser = userPool.getCurrentUser();
+    if (!cognitoUser) {
+      const fallbackToken = localStorage.getItem('bb_token') || sessionStorage.getItem('bb_token');
+      if (fallbackToken) {
+        try {
+          const payload = JSON.parse(atob(fallbackToken.split('.')[1]));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            localStorage.removeItem('bb_token');
+            sessionStorage.removeItem('bb_token');
+            return resolve(null);
+          }
+        } catch {
+          // If token format is not standard JWT, return fallback
+        }
+      }
+      return resolve(fallbackToken);
+    }
+
+    cognitoUser.getSession((err: any, session: any) => {
+      if (err || !session || !session.isValid()) {
+        console.warn("Cognito session invalid or refresh failed:", err);
+        localStorage.removeItem('bb_token');
+        sessionStorage.removeItem('bb_token');
+        return resolve(null);
+      }
+
+      const freshToken = session.getIdToken().getJwtToken();
+      if (sessionStorage.getItem('bb_token')) {
+        sessionStorage.setItem('bb_token', freshToken);
+      } else {
+        localStorage.setItem('bb_token', freshToken);
+      }
+      return resolve(freshToken);
+    });
+  });
+}
+
+export function logoutCognito(): void {
+  const cognitoUser = userPool.getCurrentUser();
+  if (cognitoUser) {
+    cognitoUser.signOut();
+  }
+  localStorage.removeItem('bb_token');
+  localStorage.removeItem('bb_user');
+  sessionStorage.removeItem('bb_token');
+  sessionStorage.removeItem('bb_user');
+}
+
+
